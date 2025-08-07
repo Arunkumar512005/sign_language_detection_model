@@ -1,0 +1,93 @@
+
+# Note: This code is for a local Python environment with OpenCV and TensorFlow installed.
+# It assumes you have a webcam connected.
+
+import cv2
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing.image import img_to_array
+from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+
+# --- Configuration ---
+# Load the trained model (make sure the path is correct on your local machine)
+# Replace this path with the actual path to your saved .keras file
+model_path = 'arun.keras' 
+
+try:
+    model = load_model(model_path)
+    print(f"✅ Model loaded successfully from: {model_path}")
+except Exception as e:
+    print(f"❌ Error loading model: {e}")
+    print("Please ensure the model file exists at the specified path.")
+    exit()
+
+# Define the image size the model expects
+image_size = (128, 128)
+
+# Get class labels from the notebook's output.
+# You must manually enter these based on the output of your Jupyter notebook.
+# Output from your notebook was: ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+class_labels = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+
+
+# --- Webcam Setup ---
+# '0' is typically the default webcam. Change to '1', '2', etc. if needed.
+cap = cv2.VideoCapture(0)
+
+if not cap.isOpened():
+    print("❌ Error: Could not open webcam.")
+    exit()
+
+print("✅ Webcam opened successfully. Press 'q' to exit.")
+
+# --- Prediction Loop ---
+while True:
+    ret, frame = cap.read() # Read a frame from the webcam
+
+    if not ret:
+        print("❌ Error: Could not read frame from webcam.")
+        break
+
+    # Optional: Flip the frame horizontally for a more intuitive mirror effect
+    frame = cv2.flip(frame, 1)
+
+    # --- Preprocess the frame for prediction ---
+    # Resize the frame to the target image size (128x128)
+    img = cv2.resize(frame, image_size)
+
+    # Convert the image to a numpy array and expand dimensions for the model
+    img_array = img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0)
+    
+    # Preprocess the image using the same function as the MobileNetV2 model
+    img_array = preprocess_input(img_array)
+
+    # --- Make Prediction ---
+    try:
+        predictions = model.predict(img_array, verbose=0)[0]
+        predicted_class_index = np.argmax(predictions)
+        confidence = np.max(predictions)
+        predicted_label = class_labels[predicted_class_index]
+
+        # --- Display Prediction on Frame ---
+        # Display the predicted label and confidence on the video frame
+        text = f"{predicted_label}: {confidence:.2f}"
+        cv2.putText(frame, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+
+    except Exception as e:
+        cv2.putText(frame, f"Prediction error: {e}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
+        print(f"❌ Error during prediction: {e}")
+
+    # --- Display the frame ---
+    cv2.imshow('Sign Language Recognition', frame)
+
+    # --- Check for exit key ---
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# --- Cleanup ---
+cap.release()
+cv2.destroyAllWindows()
+print("Webcam released and windows closed.")
+```
